@@ -6,7 +6,7 @@ import './Admin.css'
 
 const EMPTY = { title: '', description: '', startTime: '', endTime: '' }
 
-//Convert UTC date from DB → local datetime-local input format
+// Convert UTC date from DB → local datetime-local input format
 const toDateTimeLocalValue = (dateStr) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -18,12 +18,19 @@ const toDateTimeLocalValue = (dateStr) => {
 // Convert local datetime-local input → UTC ISO (no double offset)
 const toISO = (localStr) => {
   if (!localStr) return ''
-  // datetime-local gives "2026-05-05T01:43" — treat as local time
   const [datePart, timePart] = localStr.split('T')
   const [year, month, day] = datePart.split('-').map(Number)
   const [hour, minute] = timePart.split(':').map(Number)
-  // Create date using local time components directly
   return new Date(year, month - 1, day, hour, minute).toISOString()
+}
+
+// ✅ Use backend status directly — no frontend recalculation
+const getStatus = (el) => {
+  const status = el.status
+  if (status === 'upcoming') return { label: 'Upcoming', cls: 'badge-warning' }
+  if (status === 'ended')    return { label: 'Ended',    cls: 'badge-danger'  }
+  if (status === 'active')   return { label: 'Active',   cls: 'badge-success' }
+  return { label: 'Unknown', cls: 'badge-warning' }
 }
 
 export default function ElectionManage() {
@@ -41,7 +48,12 @@ export default function ElectionManage() {
     } catch { } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  // ✅ Auto-refresh every 30 seconds so status updates automatically
+  useEffect(() => {
+    load()
+    const interval = setInterval(() => load(), 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const openCreate = () => {
     setEditing(null)
@@ -54,7 +66,7 @@ export default function ElectionManage() {
     setForm({
       title: el.title,
       description: el.description || '',
-      startTime: toDateTimeLocalValue(el.startTime), 
+      startTime: toDateTimeLocalValue(el.startTime),
       endTime: toDateTimeLocalValue(el.endTime),
     })
     setShowModal(true)
@@ -69,7 +81,7 @@ export default function ElectionManage() {
     try {
       const payload = {
         ...form,
-        startTime: toISO(form.startTime), 
+        startTime: toISO(form.startTime),
         endTime: toISO(form.endTime)
       }
 
@@ -99,13 +111,6 @@ export default function ElectionManage() {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete')
     }
-  }
-
-  const getStatus = (el) => {
-    const now = new Date()
-    if (new Date(el.startTime) > now) return { label: 'Upcoming', cls: 'badge-warning' }
-    if (new Date(el.endTime) < now) return { label: 'Ended', cls: 'badge-danger' }
-    return { label: 'Active', cls: 'badge-success' }
   }
 
   const fmt = (d) =>
