@@ -6,6 +6,26 @@ import './Admin.css'
 
 const EMPTY = { title: '', description: '', startTime: '', endTime: '' }
 
+//Convert UTC date from DB → local datetime-local input format
+const toDateTimeLocalValue = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const offset = d.getTimezoneOffset() * 60000
+  const local = new Date(d.getTime() - offset)
+  return local.toISOString().slice(0, 16)
+}
+
+// Convert local datetime-local input → UTC ISO (no double offset)
+const toISO = (localStr) => {
+  if (!localStr) return ''
+  // datetime-local gives "2026-05-05T01:43" — treat as local time
+  const [datePart, timePart] = localStr.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute] = timePart.split(':').map(Number)
+  // Create date using local time components directly
+  return new Date(year, month - 1, day, hour, minute).toISOString()
+}
+
 export default function ElectionManage() {
   const [elections, setElections] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,10 +43,10 @@ export default function ElectionManage() {
 
   useEffect(() => { load() }, [])
 
-  const openCreate = () => { 
+  const openCreate = () => {
     setEditing(null)
     setForm(EMPTY)
-    setShowModal(true) 
+    setShowModal(true)
   }
 
   const openEdit = (el) => {
@@ -34,30 +54,23 @@ export default function ElectionManage() {
     setForm({
       title: el.title,
       description: el.description || '',
-      startTime: toDateTimeLocalValue(el.startTime),
+      startTime: toDateTimeLocalValue(el.startTime), 
       endTime: toDateTimeLocalValue(el.endTime),
     })
     setShowModal(true)
   }
 
-  const handleChange = e => 
+  const handleChange = e =>
     setForm(p => ({ ...p, [e.target.name]: e.target.value }))
 
-  // FIXED FUNCTION (IMPORTANT)
   const handleSave = async (e) => {
-  e.preventDefault()
-  setSaving(true)
+    e.preventDefault()
+    setSaving(true)
     try {
-      const toISO = (localStr) => {
-        const d = new Date(localStr)
-        const offset = d.getTimezoneOffset() * 60000
-        return new Date(d.getTime() - offset).toISOString()
-      }
-
       const payload = {
         ...form,
-        startTime: toISO(form.startTime),  
-        endTime: toISO(form.endTime)        
+        startTime: toISO(form.startTime), 
+        endTime: toISO(form.endTime)
       }
 
       if (editing) {
@@ -70,8 +83,7 @@ export default function ElectionManage() {
 
       setShowModal(false)
       load()
-    }
-    catch (err) {
+    } catch (err) {
       toast.error(err.response?.data?.message || 'Error saving election')
     } finally {
       setSaving(false)
@@ -96,15 +108,15 @@ export default function ElectionManage() {
     return { label: 'Active', cls: 'badge-success' }
   }
 
-  const fmt = (d) => 
-    d 
-      ? new Date(d).toLocaleString('en-IN', { 
-          day: '2-digit', 
-          month: 'short', 
-          year: 'numeric', 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }) 
+  const fmt = (d) =>
+    d
+      ? new Date(d).toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
       : '—'
 
   return (
@@ -140,9 +152,9 @@ export default function ElectionManage() {
             {elections.map((el, i) => {
               const s = getStatus(el)
               return (
-                <div 
-                  key={el._id} 
-                  className="election-item glass-card animate-fade" 
+                <div
+                  key={el._id}
+                  className="election-item glass-card animate-fade"
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >
                   <div className="election-item-info">
@@ -163,14 +175,14 @@ export default function ElectionManage() {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
                     <span className={`badge ${s.cls}`}>{s.label}</span>
                     <div className="election-item-actions">
-                      <button 
-                        className="btn btn-secondary btn-sm" 
+                      <button
+                        className="btn btn-secondary btn-sm"
                         onClick={() => openEdit(el)}
                       >
                         ✏️ Edit
                       </button>
-                      <button 
-                        className="btn btn-danger btn-sm" 
+                      <button
+                        className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(el._id)}
                       >
                         🗑️ Delete
@@ -185,8 +197,8 @@ export default function ElectionManage() {
       </div>
 
       {showModal && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onClick={e => e.target === e.currentTarget && setShowModal(false)}
         >
           <div className="modal">
@@ -200,64 +212,64 @@ export default function ElectionManage() {
             <form onSubmit={handleSave}>
               <div className="form-group">
                 <label className="form-label">Election Title *</label>
-                <input 
-                  name="title" 
-                  required 
-                  className="form-input" 
-                  value={form.title} 
-                  onChange={handleChange} 
+                <input
+                  name="title"
+                  required
+                  className="form-input"
+                  value={form.title}
+                  onChange={handleChange}
                 />
               </div>
 
               <div className="form-group">
                 <label className="form-label">Description</label>
-                <textarea 
-                  name="description" 
-                  rows={3} 
-                  className="form-input" 
-                  value={form.description} 
-                  onChange={handleChange} 
+                <textarea
+                  name="description"
+                  rows={3}
+                  className="form-input"
+                  value={form.description}
+                  onChange={handleChange}
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Start Date & Time *</label>
-                  <input 
-                    name="startTime" 
-                    type="datetime-local" 
-                    required 
-                    className="form-input" 
-                    value={form.startTime} 
-                    onChange={handleChange} 
+                  <input
+                    name="startTime"
+                    type="datetime-local"
+                    required
+                    className="form-input"
+                    value={form.startTime}
+                    onChange={handleChange}
                   />
                 </div>
 
                 <div className="form-group">
                   <label className="form-label">End Date & Time *</label>
-                  <input 
-                    name="endTime" 
-                    type="datetime-local" 
-                    required 
-                    className="form-input" 
-                    value={form.endTime} 
-                    onChange={handleChange} 
+                  <input
+                    name="endTime"
+                    type="datetime-local"
+                    required
+                    className="form-input"
+                    value={form.endTime}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 12 }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary btn-full" 
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-full"
                   onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
 
-                <button 
-                  type="submit" 
-                  className="btn btn-primary btn-full" 
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-full"
                   disabled={saving}
                 >
                   {saving ? 'Saving...' : editing ? 'Update Election' : 'Create Election'}
