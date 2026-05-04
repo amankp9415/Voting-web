@@ -12,13 +12,17 @@ const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
 }));
 
-app.use(
-  helmet({
+app.use(helmet({
     contentSecurityPolicy: false, // disable CSP for development
   })
 );
@@ -30,6 +34,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
+app.get("/", (req, res) => {
+  res.send("Backend is live 🚀");
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/elections', electionRoutes);

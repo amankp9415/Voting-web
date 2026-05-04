@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const apiBaseURL = import.meta.env.VITE_API_URL || '/api'
+const apiBaseURL = import.meta.env.VITE_API_URL?.trim() || '/api'
+if (!import.meta.env.VITE_API_URL?.trim() || import.meta.env.VITE_API_URL.includes('placeholder')) {
+  console.warn('VITE_API_URL is not configured. Using /api fallback. Set VITE_API_URL in Netlify environment variables for production deployment.')
+}
+
 const backendOrigin = apiBaseURL.endsWith('/api')
   ? apiBaseURL.slice(0, -4)
   : apiBaseURL
